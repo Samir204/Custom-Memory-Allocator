@@ -8,6 +8,7 @@ the time, hate, anger and energy wasted is impecable
 
 */
 
+// WEEK 1:
 
 #define HEADER_SIZE sizeof(Block)
 
@@ -37,13 +38,17 @@ static Block *extend_heap(size_t size){
     block->next = NULL;
     block->prev = NULL;
 
+    block->magic = MAGIC_ALLOC;
+
     // link into list
     if(heap_start == NULL){
         heap_start = block;
     }
     else{
         Block *cur= heap_start;
-        while (cur!=NULL) cur = cur->next;
+        while (cur->next!=NULL)
+             cur = cur->next;
+        
         cur->next = block;
         block->prev = cur;        
     }
@@ -63,27 +68,60 @@ returns pointers that might not be properly aligned. On 64-bit systems,
  or a crashes on some architectures, which is fucked 
 */
 
+static void *split_block(Block *block, size_t size);
+
 void *my_malloc(size_t size){
-    if(size == 0) return;
+    pthread_mutex_lock(&alloc_lock);
+
+    if (size == 0) { 
+        pthread_mutex_unlock(&alloc_lock); 
+        return NULL; 
+    }
+
     size = ALIGN_SIZE(size);
+
     Block *block = find_free(size);
-    if(block){
+    if (block) {
+        split_block(block, size);
         block->is_free = 0;
-    }
-    else{
+        block->magic = MAGIC_ALLOC;
+    } else {
         block = extend_heap(size);
-        if(!block) return NULL;
+        if (!block) { 
+            pthread_mutex_unlock(&alloc_lock); 
+            return NULL; 
+        }
     }
-    return (void*)(block+1);
+
+    pthread_mutex_unlock(&alloc_lock);
+    return (void*)(block + 1);
     // pointer past the head
 }
 
+void *coalesce(Block *block);
 
 void my_free(void *ptr){
-    if(ptr == NULL) return;
-    Block *block = (void*)ptr -1;
-    // recover the head
+    pthread_mutex_lock(&alloc_lock);
+
+    if (ptr == NULL) { pthread_mutex_unlock(&alloc_lock); return; }
+    Block *block = (Block*)ptr - 1;
+
+    if (block->magic == MAGIC_FREE) {
+        fprintf(stderr, "ERROR: double-free at %p\n", ptr);
+        pthread_mutex_unlock(&alloc_lock);
+        return;
+    }
+    if (block->magic != MAGIC_ALLOC) {
+        fprintf(stderr, "ERROR: invalid pointer at %p\n", ptr);
+        pthread_mutex_unlock(&alloc_lock);
+        return;
+    }
+
+    block->magic   = MAGIC_FREE;
     block->is_free = 1;
+    coalesce(block);
+
+    pthread_mutex_unlock(&alloc_lock);
     // freeing is just saying that this block 
     // is free to use, but the data is still there
 }
@@ -119,14 +157,15 @@ void prinf_heap(){
 #define MIN_SPLIT (HEADER_SIZE + 8)
 
 static void *split_block(Block *block, size_t size){
-    if(block->size < size + MIN_SPLIT) return;
+    if(block->size < size + MIN_SPLIT) return NULL;
     // said block is smoler that whats needed, sooo return 
 
     Block *new_block = (Block*)((char*)(block + 1) + size);
-    new_block->size = size;
+    new_block->size = block->size - size - HEADER_SIZE;
     new_block->is_free = 1;
     new_block->next = block->next;
     new_block->prev= block;
+    new_block->magic = MAGIC_ALLOC;
 
     if(block->next)
         block->next->prev= new_block;
@@ -138,14 +177,49 @@ static void *split_block(Block *block, size_t size){
 
 
 void *my_realloc(void *ptr, size_t size){
-    if(!ptr) return my_malloc(size);
-    if(size == 0){
+    pthread_mutex_lock(&alloc_lock);
+    
+    if (!ptr) {
+        pthread_mutex_unlock(&alloc_lock);
+        return my_malloc(size);   // my_malloc will lock again — so unlock first
+    }
+    if (size == 0) {
+        pthread_mutex_unlock(&alloc_lock);
         my_free(ptr);
         return NULL;
     }
 
+    size = ALIGN_SIZE(size);
     Block *block = (Block*)ptr - 1;
-    if(block->size == 0) return ptr;
+
+    // already big enough --> return
+    if (block->size >= size) {
+        pthread_mutex_unlock(&alloc_lock);
+        return ptr;
+    }
+
+    // try to absorb the next block if its free
+    if (block->next && block->next->is_free){
+        size_t combined = block->size + HEADER_SIZE + block->next->size;
+        if (combined >= size){ // absorb next block in to this one
+            block->size = combined;
+            block->next = block->next->next;
+            if (block->next){
+                block->next->prev = block;
+            }
+            pthread_mutex_unlock(&alloc_lock);
+
+            return ptr; 
+        }
+        
+    }
+    
+
+
+    // not free, sooo alloc new -> copy -> free old
+    // -> means then
+    pthread_mutex_unlock(&alloc_lock);   
+    // unlock before calling my_malloc/my_free
 
     void *new_ptr = my_malloc(size);
     if(!new_ptr) return NULL;
@@ -155,28 +229,66 @@ void *my_realloc(void *ptr, size_t size){
 }
 
 void *my_calloc(size_t nmemb, size_t size){
-    void *ptr = my_malloc(nmemb * size);
+    void *ptr = my_malloc(nmemb * size);   // my_malloc handles its own lock
     if(ptr) memset(ptr, 0, nmemb * size); // zero the memory
     return ptr;
 }
 
 
 
+// WEEK 2 & 3:
+
+// a system that scans the whole list and 
+// returns the smallest block that fits
+// ??? instead of the first one ??? 
+static Block *find_best_fit(size_t size){
+
+    Block *cur = heap_start;
+    Block *best = NULL;
+    while (cur){
+        if(cur->is_free && cur->size >= size){
+            if (best == NULL || cur->size < best->size)
+                best = cur;
+        }
+        cur = cur->next;
+    }
+    return best;
+}
+
+// after a free, merge the block with its neighbors if they're also free
+// because why have to free block when i can have one free block with the size of both 
+// its also good because in this way i can reduse the amount of checking for free blocks
+// meaning. rather thatn checking two maybe free blocks, i can check only one 
+void *coalesce(Block *block){
+
+    if (block->next && block->next->is_free) {
+        block->size += HEADER_SIZE + block->next->size;
+        block->next  = block->next->next;
+        if (block->next)
+            block->next->prev = block;
+    }
+
+    // merge with PREV block if it's free
+    if (block->prev && block->prev->is_free) {
+        block->prev->size += HEADER_SIZE + block->size;
+        block->prev->next  = block->next;
+        if (block->next)
+            block->next->prev = block->prev;
+    }
+}
 
 
+/*
+typedef struct Block {
+    size_t size;
+    int is_free;
+    struct Block *next;
+    struct Block *prev;
+} Block;
 
-
-
-
-
-
-
-
-
-
-
-
-
+-->  static Block *heap_start = NULL;
+    
+*/
 
 
 

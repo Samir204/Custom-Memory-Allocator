@@ -2,7 +2,10 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
-// #include <stdint.h>
+#include <stdint.h>
+#include <pthread.h>
+
+static pthread_mutex_t alloc_lock = PTHREAD_MUTEX_INITIALIZER;
 
 
 typedef struct Block {
@@ -10,7 +13,14 @@ typedef struct Block {
     int is_free;
     struct Block *next;
     struct Block *prev;
+
+    uint32_t magic;
 } Block;
+
+#define MAGIC_ALLOC 0xDEADBEEF // block in use
+#define MAGIC_FREE 0xDEADDEAD // block was free 
+
+
 
 
 
