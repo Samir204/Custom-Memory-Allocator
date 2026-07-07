@@ -3,7 +3,7 @@
 CC = clang
 CFLAGS = -Wall -Wextra -g
 
-SRC = main.c allocator.c buddy.c
+SRC = main.c allocator.c buddy.c 
 OBJ = $(SRC:.c=.o)
 
 TARGET = allocator

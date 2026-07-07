@@ -70,6 +70,14 @@ returns pointers that might not be properly aligned. On 64-bit systems,
 
 static void *split_block(Block *block, size_t size);
 
+static AllocStrategy current_strategy = STRATEGY_FIRST_FIT;
+void set_strategy(AllocStrategy s){
+    current_strategy = s;
+}
+
+
+static Block *find_best_fit(size_t size);
+
 void *my_malloc(size_t size){
     pthread_mutex_lock(&alloc_lock);
 
@@ -80,7 +88,13 @@ void *my_malloc(size_t size){
 
     size = ALIGN_SIZE(size);
 
-    Block *block = find_free(size);
+    if(current_strategy == STRATEGY_BUDDY){
+        pthread_mutex_unlock(&alloc_lock);
+        return buddy_malloc(size); // <-- from buddy.c
+    }
+    // this is dont to benchmark best fit without duplicating the whole allocator
+    Block *block = (current_strategy == STRATEGY_BEST_FIT)? find_best_fit(size): find_free(size);
+
     if (block) {
         split_block(block, size);
         block->is_free = 0;
@@ -105,6 +119,12 @@ void my_free(void *ptr){
 
     if (ptr == NULL) { pthread_mutex_unlock(&alloc_lock); return; }
     Block *block = (Block*)ptr - 1;
+
+    if (current_strategy == STRATEGY_BUDDY) {
+        pthread_mutex_unlock(&alloc_lock);
+        buddy_free(ptr);
+        return;
+    }
 
     if (block->magic == MAGIC_FREE) {
         fprintf(stderr, "ERROR: double-free at %p\n", ptr);
@@ -278,20 +298,45 @@ void *coalesce(Block *block){
 }
 
 
-/*
-typedef struct Block {
-    size_t size;
-    int is_free;
-    struct Block *next;
-    struct Block *prev;
-} Block;
 
--->  static Block *heap_start = NULL;
-    
+
+/*
+this is for week 4 but im doing it now becaus eim short on time.
+its basicaly a benchmarking harness, the goal is to measure two things 
+of these three strategies (first-fit, best-fit, buddy) and compare them against each other:
+
+ 1- Throughput: how many malloc/free operations per second
+ 2- Fragmentation: how much memory is wasted relative to what's actually in use
+
+and thats basicaly it
 */
 
 
+// fragmentation ratio = wasted free memory / total heap memory
+// 0.0 = perfect (no waste), 1.0 = entire heap is unusable fragments
 
+double fragmentation_ratio(){
+    size_t total = 0;
+    size_t free_bytes = 0;
+    size_t largest_free = 0;
+
+    Block *cur = heap_start;
+    while(cur){
+        total += cur->size + HEADER_SIZE;
+        if(cur->is_free){
+            free_bytes += cur->size;
+            if(cur->size > largest_free)
+                largest_free = cur->size;
+        }
+        cur = cur->next;
+    }
+    if(total == 0) return 0;
+
+
+    // return how much of the free memory is unusable
+    // because its fragmented, meaning its not in the largest contiguous block
+    return 1.0 - ((double)largest_free / (double)free_bytes);
+}
 
 
 

@@ -1,8 +1,10 @@
+#include "allocator.h"
+
+
 // ── Buddy system ─────────────────────────────────────────────────────────────
 // Separate from your first-fit allocator — uses its own memory pool
 // so the two systems don't interfere with each other.
 
-#include "allocator.h"
 
 
 #define BUDDY_POOL_SIZE (1024 * 64)  // 64 KB pool, must be power of two

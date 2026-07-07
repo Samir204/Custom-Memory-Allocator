@@ -17,6 +17,14 @@ typedef struct Block {
     uint32_t magic;
 } Block;
 
+typedef enum {
+    STRATEGY_FIRST_FIT,
+    STRATEGY_BEST_FIT,
+    STRATEGY_BUDDY
+} AllocStrategy;
+
+void set_strategy(AllocStrategy s);
+
 #define MAGIC_ALLOC 0xDEADBEEF // block in use
 #define MAGIC_FREE 0xDEADDEAD // block was free 
 
@@ -30,9 +38,10 @@ void  *my_realloc(void *ptr, size_t size);
 void  *my_calloc(size_t nmemb, size_t size);
 void   print_heap(void);
 
+double fragmentation_ratio(void);
 
-
-
+void *buddy_malloc(size_t size);
+void buddy_free(void *ptr);
 
 
 

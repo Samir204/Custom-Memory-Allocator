@@ -1,0 +1,10 @@
+strategy,pattern,time_ms,ops_per_sec,fragmentation
+first-fit,bulk,83.86,238490,0.0000
+first-fit,interleaved,40.25,496833,0.0000
+first-fit,random-sizes,218.63,91480,0.0000
+best-fit,bulk,83.78,238726,0.0000
+best-fit,interleaved,64.35,310815,0.0000
+best-fit,random-sizes,220.81,90576,0.0000
+buddy,bulk,0.19,105820106,0.0000
+buddy,interleaved,0.17,114942530,0.0000
+buddy,random-sizes,0.25,79365079,0.0000
