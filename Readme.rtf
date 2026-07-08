@@ -1,36 +1,24 @@
-# Custom Memory Allocator
+Custom Memory Allocator
 
-A from-scratch implementation of `malloc`, `free`, `realloc`, and `calloc` in C. No standard library allocator functions are used. Everything runs on top of raw `sbrk` and `mmap` system calls.
+A from-scratch implementation of malloc, free, realloc, and calloc in C. No standard library allocator functions are used. Everything runs on top of raw sbrk and mmap system calls.
+Built as part of a summer portfolio project to understand what actually happens when you call malloc.
 
-Built as part of a summer portfolio project to understand what actually happens when you call `malloc`.
-
----
-
-## What this is
-
-When you write `malloc(32)` in C, the standard library does a lot of work behind the scenes: it finds a free chunk of heap memory, tracks it, and hands you a pointer. This project implements all of that from scratch.
-
+What this is
+When you write malloc(32) in C, the standard library does a lot of work behind the scenes: it finds a free chunk of heap memory, tracks it, and hands you a pointer. This project implements all of that from scratch.
 The allocator supports three different strategies for finding free memory, and they all get benchmarked against each other to show the trade-offs between speed and fragmentation.
 
----
+Features
+	•	Three allocation strategies: first-fit, best-fit, and buddy system
+	•	Block splitting to avoid wasting memory in large free blocks
+	•	Block coalescing to merge adjacent free blocks after freeing
+	•	Alignment to 8-byte boundaries on all returned pointers
+	•	Double-free detection using magic number headers
+	•	Invalid pointer detection on free
+	•	In-place realloc growth when the next block is free
+	•	Thread safety via a POSIX mutex
+	•	Benchmarking harness comparing throughput and fragmentation across all three strategies
 
-## Features
-
-- Three allocation strategies: first-fit, best-fit, and buddy system
-- Block splitting to avoid wasting memory in large free blocks
-- Block coalescing to merge adjacent free blocks after freeing
-- Alignment to 8-byte boundaries on all returned pointers
-- Double-free detection using magic number headers
-- Invalid pointer detection on free
-- In-place realloc growth when the next block is free
-- Thread safety via a POSIX mutex
-- Benchmarking harness comparing throughput and fragmentation across all three strategies
-
----
-
-## Project structure
-
-```
+Project structure
 allocator/
   allocator.h       public API and struct definitions
   allocator.c       main implementation
@@ -39,31 +27,18 @@ allocator/
   benchmark.c       benchmarking harness
   results.csv       benchmark output
   Makefile          build config
-```
 
----
-
-## How to build
-
-```bash
+How to build
 # build and run tests
 gcc -Wall -Wextra -pthread -o test allocator.c buddy.c test.c && ./test
 
 # build and run benchmarks
 gcc -Wall -Wextra -pthread -O2 -o benchmark allocator.c buddy.c benchmark.c && ./benchmark
-```
+The -O2 flag on the benchmark build matters. You want compiler optimisations on when measuring performance, not a debug build.
 
-The `-O2` flag on the benchmark build matters. You want compiler optimisations on when measuring performance, not a debug build.
-
----
-
-## How it works
-
-### The block header
-
+How it works
+The block header
 Every chunk of managed memory has a small header placed right before it:
-
-```c
 typedef struct Block {
     size_t   size;      // usable bytes after this header
     int      is_free;   // 1 = available, 0 = in use
@@ -71,74 +46,72 @@ typedef struct Block {
     struct Block *next;
     struct Block *prev;
 } Block;
-```
-
 On 64-bit systems this is 32 bytes. The layout in memory looks like:
-
-```
 [ header ][ user data ][ header ][ user data ]...
-```
-
-Given a user pointer, recovering the header is always `(Block*)ptr - 1`. This one pattern is used everywhere.
-
-### The three strategies
-
-**First-fit** scans the block list and returns the first free block that is big enough. Fast, but tends to fragment the beginning of the heap with small leftovers over time.
-
-**Best-fit** scans the entire list and returns the smallest block that fits. Produces less fragmentation than first-fit but is slower because it always does a full scan.
-
-**Buddy system** is a completely different approach. Every block is a power-of-two size. When memory is needed, a large block is repeatedly halved until the smallest power-of-two that fits is reached. When freed, a block merges with its "buddy" (the other half of the split) if the buddy is also free. Finding the buddy uses XOR arithmetic and is O(1). Allocation is O(log n). The trade-off is internal fragmentation: a 33-byte request gets a 64-byte block, wasting 31 bytes.
-
-### Switching strategies
-
-```c
+Given a user pointer, recovering the header is always (Block*)ptr - 1. This one pattern is used everywhere.
+The three strategies
+First-fit scans the block list and returns the first free block that is big enough. Fast, but tends to fragment the beginning of the heap with small leftovers over time.
+Best-fit scans the entire list and returns the smallest block that fits. Produces less fragmentation than first-fit but is slower because it always does a full scan.
+Buddy system is a completely different approach. Every block is a power-of-two size. When memory is needed, a large block is repeatedly halved until the smallest power-of-two that fits is reached. When freed, a block merges with its "buddy" (the other half of the split) if the buddy is also free. Finding the buddy uses XOR arithmetic and is O(1). Allocation is O(log n). The trade-off is internal fragmentation: a 33-byte request gets a 64-byte block, wasting 31 bytes.
+Switching strategies
 set_strategy(STRATEGY_FIRST_FIT);   // default
 set_strategy(STRATEGY_BEST_FIT);
 set_strategy(STRATEGY_BUDDY);
-```
-
-### Safety features
-
+Safety features
 Two magic number constants are used to detect memory bugs:
-
-```c
 #define MAGIC_ALLOC 0xDEADBEEF   // block is in use
 #define MAGIC_FREE  0xDEADDEAD   // block was freed
-```
+Every block gets MAGIC_ALLOC stamped on it when allocated. On free, the magic field is checked first. If it is already MAGIC_FREE, the call is a double-free and is rejected with an error message. If it is anything other than MAGIC_ALLOC, the pointer is invalid and is also rejected. Neither case crashes the program.
 
-Every block gets `MAGIC_ALLOC` stamped on it when allocated. On free, the magic field is checked first. If it is already `MAGIC_FREE`, the call is a double-free and is rejected with an error message. If it is anything other than `MAGIC_ALLOC`, the pointer is invalid and is also rejected. Neither case crashes the program.
-
----
-
-## Benchmark results
-
+Benchmark results
 Three patterns, each with 10,000 operations:
-
-- **Bulk**: allocate everything then free everything
-- **Interleaved**: alternating alloc and free, simulating short-lived requests
-- **Random sizes**: random sizes between 8 and 512 bytes, freed in reverse order
-
-| Strategy   | Pattern      | Throughput (ops/s) | Fragmentation |
-|------------|--------------|--------------------|---------------|
-| first-fit  | bulk         | ~1,600,000         | 0.00          |
-| first-fit  | interleaved  | ~1,100,000         | 0.12          |
-| first-fit  | random sizes | ~800,000           | 0.34          |
-| best-fit   | bulk         | ~1,050,000         | 0.00          |
-| best-fit   | interleaved  | ~890,000           | 0.08          |
-| best-fit   | random sizes | ~700,000           | 0.19          |
-| buddy      | bulk         | ~2,200,000         | 0.00          |
-| buddy      | interleaved  | ~1,800,000         | 0.05          |
-| buddy      | random sizes | ~1,400,000         | 0.28          |
-
-The fragmentation ratio is `1.0 - (largest free block / total free memory)`. A value of 0.0 means all free memory is in one contiguous block and fully usable. A value of 0.34 means roughly a third of the free memory is split into fragments too small to satisfy most requests.
-
+	•	Bulk: allocate everything then free everything
+	•	Interleaved: alternating alloc and free, simulating short-lived requests
+	•	Random sizes: random sizes between 8 and 512 bytes, freed in reverse order
+Strategy
+Pattern
+Throughput (ops/s)
+Fragmentation
+first-fit
+bulk
+~1,600,000
+0.00
+first-fit
+interleaved
+~1,100,000
+0.12
+first-fit
+random sizes
+~800,000
+0.34
+best-fit
+bulk
+~1,050,000
+0.00
+best-fit
+interleaved
+~890,000
+0.08
+best-fit
+random sizes
+~700,000
+0.19
+buddy
+bulk
+~2,200,000
+0.00
+buddy
+interleaved
+~1,800,000
+0.05
+buddy
+random sizes
+~1,400,000
+0.28
+The fragmentation ratio is 1.0 - (largest free block / total free memory). A value of 0.0 means all free memory is in one contiguous block and fully usable. A value of 0.34 means roughly a third of the free memory is split into fragments too small to satisfy most requests.
 The buddy system wins on throughput across every pattern because it avoids linear list scanning. The cost is that internal fragmentation on random-size workloads (0.28) is high due to size rounding. First-fit is fastest of the linked-list strategies but fragments the most. Best-fit is a middle ground: slightly slower than first-fit but noticeably better fragmentation on mixed workloads.
 
----
-
-## Test suite
-
-```
+Test suite
 PASS test_basic_alloc
 PASS test_alignment
 PASS test_zero_alloc
@@ -150,42 +123,25 @@ PASS test_realloc_inplace
 PASS test_thread_safety
 
 All tests passed.
-```
+The ERROR line is expected. test_double_free intentionally frees the same pointer twice to verify that the error is caught and printed without crashing.
 
-The `ERROR` line is expected. `test_double_free` intentionally frees the same pointer twice to verify that the error is caught and printed without crashing.
-
----
-
-## What I learned
-
+What I learned
 A few things that were not obvious going in:
+Coalescing cannot call malloc or free internally. The first version of coalesce called my_free to mark a block as free before merging it. That causes infinite recursion because my_free calls coalesce, which calls my_free, and so on. Coalescing has to do pointer surgery directly on the existing blocks.
+The magic field has to be reset on reuse. When my_malloc reuses a freed block, it has to stamp MAGIC_ALLOC back on it. Missing this meant the next free call would see MAGIC_FREE and incorrectly report a double-free, which is exactly what showed up in the thread safety test before the fix.
+Unlocking before calling another locked function. my_realloc sometimes needs to call my_malloc and my_free internally for its fallback path. Since all three functions lock the same mutex, my_realloc has to unlock before making those calls. Forgetting this causes a deadlock that only shows up under concurrent load.
+Best-fit does not always produce less fragmentation. The theory says best-fit should fragment less than first-fit. In practice, because best-fit always picks the tightest match, it tends to leave many tiny unusable remainders. On random-size workloads the difference is real (0.19 vs 0.34) but best-fit is not the clear winner the theory suggests.
 
-**Coalescing cannot call malloc or free internally.** The first version of coalesce called my_free to mark a block as free before merging it. That causes infinite recursion because my_free calls coalesce, which calls my_free, and so on. Coalescing has to do pointer surgery directly on the existing blocks.
+Known limitations
+	•	Single global mutex: all allocations are serialised. Under high thread contention this is the main bottleneck. Per-thread arenas (how jemalloc and tcmalloc work) would fix this.
+	•	No mmap fallback for large allocations: everything goes through sbrk. Real allocators use mmap for requests above ~128KB so those chunks can be returned to the OS on free.
+	•	O(n) allocation for first-fit and best-fit: both scan the full free list. Segregated free lists (one list per size class) would make typical allocations O(1).
+	•	Fixed-size buddy pool: the buddy system is backed by a static 64KB array. A real implementation would grow on demand.
 
-**The magic field has to be reset on reuse.** When my_malloc reuses a freed block, it has to stamp MAGIC_ALLOC back on it. Missing this meant the next free call would see MAGIC_FREE and incorrectly report a double-free, which is exactly what showed up in the thread safety test before the fix.
+Resources that helped
+	•	The C Programming Language by Kernighan and Ritchie, chapter 8 (storage allocator example)
+	•	glibc malloc source: malloc/malloc.c in the glibc repository
+	•	jemalloc paper: A Scalable Concurrent malloc Implementation for FreeBSD by Jason Evans
+	•	man 2 sbrk, man 2 mmap
 
-**Unlocking before calling another locked function.** my_realloc sometimes needs to call my_malloc and my_free internally for its fallback path. Since all three functions lock the same mutex, my_realloc has to unlock before making those calls. Forgetting this causes a deadlock that only shows up under concurrent load.
-
-**Best-fit does not always produce less fragmentation.** The theory says best-fit should fragment less than first-fit. In practice, because best-fit always picks the tightest match, it tends to leave many tiny unusable remainders. On random-size workloads the difference is real (0.19 vs 0.34) but best-fit is not the clear winner the theory suggests.
-
----
-
-## Known limitations
-
-- **Single global mutex**: all allocations are serialised. Under high thread contention this is the main bottleneck. Per-thread arenas (how jemalloc and tcmalloc work) would fix this.
-- **No mmap fallback for large allocations**: everything goes through sbrk. Real allocators use mmap for requests above ~128KB so those chunks can be returned to the OS on free.
-- **O(n) allocation for first-fit and best-fit**: both scan the full free list. Segregated free lists (one list per size class) would make typical allocations O(1).
-- **Fixed-size buddy pool**: the buddy system is backed by a static 64KB array. A real implementation would grow on demand.
-
----
-
-## Resources that helped
-
-- *The C Programming Language* by Kernighan and Ritchie, chapter 8 (storage allocator example)
-- glibc malloc source: `malloc/malloc.c` in the glibc repository
-- jemalloc paper: *A Scalable Concurrent malloc Implementation for FreeBSD* by Jason Evans
-- `man 2 sbrk`, `man 2 mmap`
-
----
-
-Built by [Samir](https://github.com/Samir204) as part of a summer systems programming portfolio.
+Built by Samir as part of a summer systems programming portfolio.
