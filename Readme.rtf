@@ -1,443 +1,146 @@
-{\rtf1\ansi\ansicpg1252\cocoartf2870
-\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\froman\fcharset0 Times-Bold;\f1\froman\fcharset0 Times-Roman;\f2\fmodern\fcharset0 Courier;
-\f3\froman\fcharset0 Times-Italic;}
-{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red109\green109\blue109;\red0\green0\blue233;
-}
-{\*\expandedcolortbl;;\cssrgb\c0\c0\c0;\cssrgb\c50196\c50196\c50196;\cssrgb\c0\c0\c93333;
-}
-{\*\listtable{\list\listtemplateid1\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat0\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid1\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid1}
-{\list\listtemplateid2\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat0\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid101\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid2}
-{\list\listtemplateid3\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat0\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid201\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid3}
-{\list\listtemplateid4\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat0\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid301\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid4}}
-{\*\listoverridetable{\listoverride\listid1\listoverridecount0\ls1}{\listoverride\listid2\listoverridecount0\ls2}{\listoverride\listid3\listoverridecount0\ls3}{\listoverride\listid4\listoverridecount0\ls4}}
-\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
-\deftab720
-\pard\pardeftab720\sa321\partightenfactor0
+Custom Memory Allocator
+A from-scratch implementation of malloc, free, realloc, and calloc in C. No standard library allocator functions are used. Everything runs on top of raw sbrk and mmap system calls.
+Built as part of a summer portfolio project to understand what actually happens when you call malloc.
 
-\f0\b\fs48 \cf0 \expnd0\expndtw0\kerning0
-\outl0\strokewidth0 \strokec2 Custom Memory Allocator\
-\pard\pardeftab720\sa240\partightenfactor0
+What this is
+When you write malloc(32) in C, the standard library does a lot of work behind the scenes: it finds a free chunk of heap memory, tracks it, and hands you a pointer. This project implements all of that from scratch.
+The allocator supports three different strategies for finding free memory, and they all get benchmarked against each other to show the trade-offs between speed and fragmentation.
 
-\f1\b0\fs24 \cf0 A from-scratch implementation of 
-\f2\fs26 malloc
-\f1\fs24 , 
-\f2\fs26 free
-\f1\fs24 , 
-\f2\fs26 realloc
-\f1\fs24 , and 
-\f2\fs26 calloc
-\f1\fs24  in C. No standard library allocator functions are used. Everything runs on top of raw 
-\f2\fs26 sbrk
-\f1\fs24  and 
-\f2\fs26 mmap
-\f1\fs24  system calls.\
-Built as part of a summer portfolio project to understand what actually happens when you call 
-\f2\fs26 malloc
-\f1\fs24 .\
-\pard\pardeftab720\partightenfactor0
-\cf3 \strokec3 \
-\pard\pardeftab720\sa298\partightenfactor0
+Features
+	•	Three allocation strategies: first-fit, best-fit, and buddy system
+	•	Block splitting to avoid wasting memory in large free blocks
+	•	Block coalescing to merge adjacent free blocks after freeing
+	•	Alignment to 8-byte boundaries on all returned pointers
+	•	Double-free detection using magic number headers
+	•	Invalid pointer detection on free
+	•	In-place realloc growth when the next block is free
+	•	Thread safety via a POSIX mutex
+	•	Benchmarking harness comparing throughput and fragmentation across all three strategies
 
-\f0\b\fs36 \cf0 \strokec2 What this is\
-\pard\pardeftab720\sa240\partightenfactor0
+Project structure
+allocator/
+  allocator.h       public API and struct definitions
+  allocator.c       main implementation
+  buddy.c           buddy system allocator
+  test.c            unit test suite
+  benchmark.c       benchmarking harness
+  results.csv       benchmark output
+  Makefile          build config
 
-\f1\b0\fs24 \cf0 When you write 
-\f2\fs26 malloc(32)
-\f1\fs24  in C, the standard library does a lot of work behind the scenes: it finds a free chunk of heap memory, tracks it, and hands you a pointer. This project implements all of that from scratch.\
-The allocator supports three different strategies for finding free memory, and they all get benchmarked against each other to show the trade-offs between speed and fragmentation.\
-\pard\pardeftab720\partightenfactor0
-\cf3 \strokec3 \
-\pard\pardeftab720\sa298\partightenfactor0
+How to build
+# build and run tests
+gcc -Wall -Wextra -pthread -o test allocator.c buddy.c test.c && ./test
 
-\f0\b\fs36 \cf0 \strokec2 Features\
-\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
-\ls1\ilvl0
-\f1\b0\fs24 \cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
-\outl0\strokewidth0 \strokec2 Three allocation strategies: first-fit, best-fit, and buddy system\
-\ls1\ilvl0\kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
-\outl0\strokewidth0 \strokec2 Block splitting to avoid wasting memory in large free blocks\
-\ls1\ilvl0\kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
-\outl0\strokewidth0 \strokec2 Block coalescing to merge adjacent free blocks after freeing\
-\ls1\ilvl0\kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
-\outl0\strokewidth0 \strokec2 Alignment to 8-byte boundaries on all returned pointers\
-\ls1\ilvl0\kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
-\outl0\strokewidth0 \strokec2 Double-free detection using magic number headers\
-\ls1\ilvl0\kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
-\outl0\strokewidth0 \strokec2 Invalid pointer detection on free\
-\ls1\ilvl0\kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
-\outl0\strokewidth0 \strokec2 In-place realloc growth when the next block is free\
-\ls1\ilvl0\kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
-\outl0\strokewidth0 \strokec2 Thread safety via a POSIX mutex\
-\ls1\ilvl0\kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
-\outl0\strokewidth0 \strokec2 Benchmarking harness comparing throughput and fragmentation across all three strategies\
-\pard\pardeftab720\partightenfactor0
-\cf3 \strokec3 \
-\pard\pardeftab720\sa298\partightenfactor0
+# build and run benchmarks
+gcc -Wall -Wextra -pthread -O2 -o benchmark allocator.c buddy.c benchmark.c && ./benchmark
+The -O2 flag on the benchmark build matters. You want compiler optimisations on when measuring performance, not a debug build.
 
-\f0\b\fs36 \cf0 \strokec2 Project structure\
-\pard\pardeftab720\partightenfactor0
+How it works
+The block header
+Every chunk of managed memory has a small header placed right before it:
+typedef struct Block {
+    size_t   size;      // usable bytes after this header
+    int      is_free;   // 1 = available, 0 = in use
+    uint32_t magic;     // corruption and double-free detection
+    struct Block *next;
+    struct Block *prev;
+} Block;
+On 64-bit systems this is 32 bytes. The layout in memory looks like:
+[ header ][ user data ][ header ][ user data ]...
+Given a user pointer, recovering the header is always (Block*)ptr - 1. This one pattern is used everywhere.
+The three strategies
+First-fit scans the block list and returns the first free block that is big enough. Fast, but tends to fragment the beginning of the heap with small leftovers over time.
+Best-fit scans the entire list and returns the smallest block that fits. Produces less fragmentation than first-fit but is slower because it always does a full scan.
+Buddy system is a completely different approach. Every block is a power-of-two size. When memory is needed, a large block is repeatedly halved until the smallest power-of-two that fits is reached. When freed, a block merges with its "buddy" (the other half of the split) if the buddy is also free. Finding the buddy uses XOR arithmetic and is O(1). Allocation is O(log n). The trade-off is internal fragmentation: a 33-byte request gets a 64-byte block, wasting 31 bytes.
+Switching strategies
+set_strategy(STRATEGY_FIRST_FIT);   // default
+set_strategy(STRATEGY_BEST_FIT);
+set_strategy(STRATEGY_BUDDY);
+Safety features
+Two magic number constants are used to detect memory bugs:
+#define MAGIC_ALLOC 0xDEADBEEF   // block is in use
+#define MAGIC_FREE  0xDEADDEAD   // block was freed
+Every block gets MAGIC_ALLOC stamped on it when allocated. On free, the magic field is checked first. If it is already MAGIC_FREE, the call is a double-free and is rejected with an error message. If it is anything other than MAGIC_ALLOC, the pointer is invalid and is also rejected. Neither case crashes the program.
 
-\f2\b0\fs26 \cf0 allocator/\
-  allocator.h       public API and struct definitions\
-  allocator.c       main implementation\
-  buddy.c           buddy system allocator\
-  test.c            unit test suite\
-  benchmark.c       benchmarking harness\
-  results.csv       benchmark output\
-  Makefile          build config\
-\pard\pardeftab720\partightenfactor0
+Benchmark results
+Three patterns, each with 10,000 operations:
+	•	Bulk: allocate everything then free everything
+	•	Interleaved: alternating alloc and free, simulating short-lived requests
+	•	Random sizes: random sizes between 8 and 512 bytes, freed in reverse order
+Strategy
+Pattern
+Throughput (ops/s)
+Fragmentation
+first-fit
+bulk
+~1,600,000
+0.00
+first-fit
+interleaved
+~1,100,000
+0.12
+first-fit
+random sizes
+~800,000
+0.34
+best-fit
+bulk
+~1,050,000
+0.00
+best-fit
+interleaved
+~890,000
+0.08
+best-fit
+random sizes
+~700,000
+0.19
+buddy
+bulk
+~2,200,000
+0.00
+buddy
+interleaved
+~1,800,000
+0.05
+buddy
+random sizes
+~1,400,000
+0.28
+The fragmentation ratio is 1.0 - (largest free block / total free memory). A value of 0.0 means all free memory is in one contiguous block and fully usable. A value of 0.34 means roughly a third of the free memory is split into fragments too small to satisfy most requests.
+The buddy system wins on throughput across every pattern because it avoids linear list scanning. The cost is that internal fragmentation on random-size workloads (0.28) is high due to size rounding. First-fit is fastest of the linked-list strategies but fragments the most. Best-fit is a middle ground: slightly slower than first-fit but noticeably better fragmentation on mixed workloads.
 
-\f1\fs24 \cf3 \strokec3 \
-\pard\pardeftab720\sa298\partightenfactor0
+Test suite
+PASS test_basic_alloc
+PASS test_alignment
+PASS test_zero_alloc
+PASS test_calloc_zeroed
+PASS test_realloc_grows
+ERROR: double-free at 0x...      <- intentional, this is the double-free test
+PASS test_double_free
+PASS test_realloc_inplace
+PASS test_thread_safety
 
-\f0\b\fs36 \cf0 \strokec2 How to build\
-\pard\pardeftab720\partightenfactor0
+All tests passed.
+The ERROR line is expected. test_double_free intentionally frees the same pointer twice to verify that the error is caught and printed without crashing.
 
-\f2\b0\fs26 \cf0 # build and run tests\
-gcc -Wall -Wextra -pthread -o test allocator.c buddy.c test.c && ./test\
-\
-# build and run benchmarks\
-gcc -Wall -Wextra -pthread -O2 -o benchmark allocator.c buddy.c benchmark.c && ./benchmark\
-\pard\pardeftab720\sa240\partightenfactor0
+What I learned
+A few things that were not obvious going in:
+Coalescing cannot call malloc or free internally. The first version of coalesce called my_free to mark a block as free before merging it. That causes infinite recursion because my_free calls coalesce, which calls my_free, and so on. Coalescing has to do pointer surgery directly on the existing blocks.
+The magic field has to be reset on reuse. When my_malloc reuses a freed block, it has to stamp MAGIC_ALLOC back on it. Missing this meant the next free call would see MAGIC_FREE and incorrectly report a double-free, which is exactly what showed up in the thread safety test before the fix.
+Unlocking before calling another locked function. my_realloc sometimes needs to call my_malloc and my_free internally for its fallback path. Since all three functions lock the same mutex, my_realloc has to unlock before making those calls. Forgetting this causes a deadlock that only shows up under concurrent load.
+Best-fit does not always produce less fragmentation. The theory says best-fit should fragment less than first-fit. In practice, because best-fit always picks the tightest match, it tends to leave many tiny unusable remainders. On random-size workloads the difference is real (0.19 vs 0.34) but best-fit is not the clear winner the theory suggests.
 
-\f1\fs24 \cf0 The 
-\f2\fs26 -O2
-\f1\fs24  flag on the benchmark build matters. You want compiler optimisations on when measuring performance, not a debug build.\
-\pard\pardeftab720\partightenfactor0
-\cf3 \strokec3 \
-\pard\pardeftab720\sa298\partightenfactor0
+Known limitations
+	•	Single global mutex: all allocations are serialised. Under high thread contention this is the main bottleneck. Per-thread arenas (how jemalloc and tcmalloc work) would fix this.
+	•	No mmap fallback for large allocations: everything goes through sbrk. Real allocators use mmap for requests above ~128KB so those chunks can be returned to the OS on free.
+	•	O(n) allocation for first-fit and best-fit: both scan the full free list. Segregated free lists (one list per size class) would make typical allocations O(1).
+	•	Fixed-size buddy pool: the buddy system is backed by a static 64KB array. A real implementation would grow on demand.
 
-\f0\b\fs36 \cf0 \strokec2 How it works\
-\pard\pardeftab720\sa280\partightenfactor0
+Resources that helped
+	•	The C Programming Language by Kernighan and Ritchie, chapter 8 (storage allocator example)
+	•	glibc malloc source: malloc/malloc.c in the glibc repository
+	•	jemalloc paper: A Scalable Concurrent malloc Implementation for FreeBSD by Jason Evans
+	•	man 2 sbrk, man 2 mmap
 
-\fs28 \cf0 The block header\
-\pard\pardeftab720\sa240\partightenfactor0
-
-\f1\b0\fs24 \cf0 Every chunk of managed memory has a small header placed right before it:\
-\pard\pardeftab720\partightenfactor0
-
-\f2\fs26 \cf0 typedef struct Block \{\
-    size_t   size;      // usable bytes after this header\
-    int      is_free;   // 1 = available, 0 = in use\
-    uint32_t magic;     // corruption and double-free detection\
-    struct Block *next;\
-    struct Block *prev;\
-\} Block;\
-\pard\pardeftab720\sa240\partightenfactor0
-
-\f1\fs24 \cf0 On 64-bit systems this is 32 bytes. The layout in memory looks like:\
-\pard\pardeftab720\partightenfactor0
-
-\f2\fs26 \cf0 [ header ][ user data ][ header ][ user data ]...\
-\pard\pardeftab720\sa240\partightenfactor0
-
-\f1\fs24 \cf0 Given a user pointer, recovering the header is always 
-\f2\fs26 (Block*)ptr - 1
-\f1\fs24 . This one pattern is used everywhere.\
-\pard\pardeftab720\sa280\partightenfactor0
-
-\f0\b\fs28 \cf0 The three strategies\
-\pard\pardeftab720\sa240\partightenfactor0
-
-\fs24 \cf0 First-fit
-\f1\b0  scans the block list and returns the first free block that is big enough. Fast, but tends to fragment the beginning of the heap with small leftovers over time.\
-
-\f0\b Best-fit
-\f1\b0  scans the entire list and returns the smallest block that fits. Produces less fragmentation than first-fit but is slower because it always does a full scan.\
-
-\f0\b Buddy system
-\f1\b0  is a completely different approach. Every block is a power-of-two size. When memory is needed, a large block is repeatedly halved until the smallest power-of-two that fits is reached. When freed, a block merges with its "buddy" (the other half of the split) if the buddy is also free. Finding the buddy uses XOR arithmetic and is O(1). Allocation is O(log n). The trade-off is internal fragmentation: a 33-byte request gets a 64-byte block, wasting 31 bytes.\
-\pard\pardeftab720\sa280\partightenfactor0
-
-\f0\b\fs28 \cf0 Switching strategies\
-\pard\pardeftab720\partightenfactor0
-
-\f2\b0\fs26 \cf0 set_strategy(STRATEGY_FIRST_FIT);   // default\
-set_strategy(STRATEGY_BEST_FIT);\
-set_strategy(STRATEGY_BUDDY);\
-\pard\pardeftab720\sa280\partightenfactor0
-
-\f0\b\fs28 \cf0 Safety features\
-\pard\pardeftab720\sa240\partightenfactor0
-
-\f1\b0\fs24 \cf0 Two magic number constants are used to detect memory bugs:\
-\pard\pardeftab720\partightenfactor0
-
-\f2\fs26 \cf0 #define MAGIC_ALLOC 0xDEADBEEF   // block is in use\
-#define MAGIC_FREE  0xDEADDEAD   // block was freed\
-\pard\pardeftab720\sa240\partightenfactor0
-
-\f1\fs24 \cf0 Every block gets 
-\f2\fs26 MAGIC_ALLOC
-\f1\fs24  stamped on it when allocated. On free, the magic field is checked first. If it is already 
-\f2\fs26 MAGIC_FREE
-\f1\fs24 , the call is a double-free and is rejected with an error message. If it is anything other than 
-\f2\fs26 MAGIC_ALLOC
-\f1\fs24 , the pointer is invalid and is also rejected. Neither case crashes the program.\
-\pard\pardeftab720\partightenfactor0
-\cf3 \strokec3 \
-\pard\pardeftab720\sa298\partightenfactor0
-
-\f0\b\fs36 \cf0 \strokec2 Benchmark results\
-\pard\pardeftab720\sa240\partightenfactor0
-
-\f1\b0\fs24 \cf0 Three patterns, each with 10,000 operations:\
-\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
-\ls2\ilvl0
-\f0\b \cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
-\outl0\strokewidth0 \strokec2 Bulk
-\f1\b0 : allocate everything then free everything\
-\ls2\ilvl0
-\f0\b \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
-\outl0\strokewidth0 \strokec2 Interleaved
-\f1\b0 : alternating alloc and free, simulating short-lived requests\
-\ls2\ilvl0
-\f0\b \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
-\outl0\strokewidth0 \strokec2 Random sizes
-\f1\b0 : random sizes between 8 and 512 bytes, freed in reverse order\
-
-\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrt\brdrnil \trbrdrl\brdrnil \trbrdrr\brdrnil 
-\clvertalc \clshdrawnil \clwWidth866\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx2160
-\clvertalc \clshdrawnil \clwWidth1259\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx4320
-\clvertalc \clshdrawnil \clwWidth1976\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx6480
-\clvertalc \clshdrawnil \clwWidth1533\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx8640
-\pard\intbl\itap1\pardeftab720\qc\partightenfactor0
-
-\f0\b \cf0 Strategy\cell 
-\pard\intbl\itap1\pardeftab720\qc\partightenfactor0
-\cf0 Pattern\cell 
-\pard\intbl\itap1\pardeftab720\qc\partightenfactor0
-\cf0 Throughput (ops/s)\cell 
-\pard\intbl\itap1\pardeftab720\qc\partightenfactor0
-\cf0 Fragmentation\cell \row
-
-\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
-\clvertalc \clshdrawnil \clwWidth866\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx2160
-\clvertalc \clshdrawnil \clwWidth1259\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx4320
-\clvertalc \clshdrawnil \clwWidth1976\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx6480
-\clvertalc \clshdrawnil \clwWidth1533\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx8640
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-
-\f1\b0 \cf0 first-fit\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 bulk\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 ~1,600,000\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 0.00\cell \row
-
-\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
-\clvertalc \clshdrawnil \clwWidth866\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx2160
-\clvertalc \clshdrawnil \clwWidth1259\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx4320
-\clvertalc \clshdrawnil \clwWidth1976\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx6480
-\clvertalc \clshdrawnil \clwWidth1533\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx8640
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 first-fit\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 interleaved\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 ~1,100,000\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 0.12\cell \row
-
-\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
-\clvertalc \clshdrawnil \clwWidth866\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx2160
-\clvertalc \clshdrawnil \clwWidth1259\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx4320
-\clvertalc \clshdrawnil \clwWidth1976\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx6480
-\clvertalc \clshdrawnil \clwWidth1533\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx8640
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 first-fit\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 random sizes\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 ~800,000\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 0.34\cell \row
-
-\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
-\clvertalc \clshdrawnil \clwWidth866\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx2160
-\clvertalc \clshdrawnil \clwWidth1259\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx4320
-\clvertalc \clshdrawnil \clwWidth1976\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx6480
-\clvertalc \clshdrawnil \clwWidth1533\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx8640
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 best-fit\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 bulk\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 ~1,050,000\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 0.00\cell \row
-
-\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
-\clvertalc \clshdrawnil \clwWidth866\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx2160
-\clvertalc \clshdrawnil \clwWidth1259\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx4320
-\clvertalc \clshdrawnil \clwWidth1976\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx6480
-\clvertalc \clshdrawnil \clwWidth1533\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx8640
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 best-fit\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 interleaved\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 ~890,000\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 0.08\cell \row
-
-\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
-\clvertalc \clshdrawnil \clwWidth866\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx2160
-\clvertalc \clshdrawnil \clwWidth1259\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx4320
-\clvertalc \clshdrawnil \clwWidth1976\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx6480
-\clvertalc \clshdrawnil \clwWidth1533\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx8640
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 best-fit\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 random sizes\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 ~700,000\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 0.19\cell \row
-
-\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
-\clvertalc \clshdrawnil \clwWidth866\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx2160
-\clvertalc \clshdrawnil \clwWidth1259\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx4320
-\clvertalc \clshdrawnil \clwWidth1976\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx6480
-\clvertalc \clshdrawnil \clwWidth1533\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx8640
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 buddy\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 bulk\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 ~2,200,000\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 0.00\cell \row
-
-\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
-\clvertalc \clshdrawnil \clwWidth866\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx2160
-\clvertalc \clshdrawnil \clwWidth1259\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx4320
-\clvertalc \clshdrawnil \clwWidth1976\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx6480
-\clvertalc \clshdrawnil \clwWidth1533\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx8640
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 buddy\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 interleaved\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 ~1,800,000\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 0.05\cell \row
-
-\itap1\trowd \taflags0 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrt\brdrnil \trbrdrr\brdrnil 
-\clvertalc \clshdrawnil \clwWidth866\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx2160
-\clvertalc \clshdrawnil \clwWidth1259\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx4320
-\clvertalc \clshdrawnil \clwWidth1976\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx6480
-\clvertalc \clshdrawnil \clwWidth1533\clftsWidth3 \clmart10 \clmarl10 \clmarb10 \clmarr10 \clbrdrt\brdrnil \clbrdrl\brdrnil \clbrdrb\brdrnil \clbrdrr\brdrnil \clpadt20 \clpadl20 \clpadb20 \clpadr20 \gaph\cellx8640
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 buddy\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 random sizes\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 ~1,400,000\cell 
-\pard\intbl\itap1\pardeftab720\partightenfactor0
-\cf0 0.28\cell \lastrow\row
-\pard\pardeftab720\sa240\partightenfactor0
-\cf0 The fragmentation ratio is 
-\f2\fs26 1.0 - (largest free block / total free memory)
-\f1\fs24 . A value of 0.0 means all free memory is in one contiguous block and fully usable. A value of 0.34 means roughly a third of the free memory is split into fragments too small to satisfy most requests.\
-The buddy system wins on throughput across every pattern because it avoids linear list scanning. The cost is that internal fragmentation on random-size workloads (0.28) is high due to size rounding. First-fit is fastest of the linked-list strategies but fragments the most. Best-fit is a middle ground: slightly slower than first-fit but noticeably better fragmentation on mixed workloads.\
-\pard\pardeftab720\partightenfactor0
-\cf3 \strokec3 \
-\pard\pardeftab720\sa298\partightenfactor0
-
-\f0\b\fs36 \cf0 \strokec2 Test suite\
-\pard\pardeftab720\partightenfactor0
-
-\f2\b0\fs26 \cf0 PASS test_basic_alloc\
-PASS test_alignment\
-PASS test_zero_alloc\
-PASS test_calloc_zeroed\
-PASS test_realloc_grows\
-ERROR: double-free at 0x...      <- intentional, this is the double-free test\
-PASS test_double_free\
-PASS test_realloc_inplace\
-PASS test_thread_safety\
-\
-All tests passed.\
-\pard\pardeftab720\sa240\partightenfactor0
-
-\f1\fs24 \cf0 The 
-\f2\fs26 ERROR
-\f1\fs24  line is expected. 
-\f2\fs26 test_double_free
-\f1\fs24  intentionally frees the same pointer twice to verify that the error is caught and printed without crashing.\
-\pard\pardeftab720\partightenfactor0
-\cf3 \strokec3 \
-\pard\pardeftab720\sa298\partightenfactor0
-
-\f0\b\fs36 \cf0 \strokec2 What I learned\
-\pard\pardeftab720\sa240\partightenfactor0
-
-\f1\b0\fs24 \cf0 A few things that were not obvious going in:\
-\pard\pardeftab720\sa240\partightenfactor0
-
-\f0\b \cf0 Coalescing cannot call malloc or free internally.
-\f1\b0  The first version of coalesce called my_free to mark a block as free before merging it. That causes infinite recursion because my_free calls coalesce, which calls my_free, and so on. Coalescing has to do pointer surgery directly on the existing blocks.\
-
-\f0\b The magic field has to be reset on reuse.
-\f1\b0  When my_malloc reuses a freed block, it has to stamp MAGIC_ALLOC back on it. Missing this meant the next free call would see MAGIC_FREE and incorrectly report a double-free, which is exactly what showed up in the thread safety test before the fix.\
-
-\f0\b Unlocking before calling another locked function.
-\f1\b0  my_realloc sometimes needs to call my_malloc and my_free internally for its fallback path. Since all three functions lock the same mutex, my_realloc has to unlock before making those calls. Forgetting this causes a deadlock that only shows up under concurrent load.\
-
-\f0\b Best-fit does not always produce less fragmentation.
-\f1\b0  The theory says best-fit should fragment less than first-fit. In practice, because best-fit always picks the tightest match, it tends to leave many tiny unusable remainders. On random-size workloads the difference is real (0.19 vs 0.34) but best-fit is not the clear winner the theory suggests.\
-\pard\pardeftab720\partightenfactor0
-\cf3 \strokec3 \
-\pard\pardeftab720\sa298\partightenfactor0
-
-\f0\b\fs36 \cf0 \strokec2 Known limitations\
-\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
-\ls3\ilvl0
-\fs24 \cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
-\outl0\strokewidth0 \strokec2 Single global mutex
-\f1\b0 : all allocations are serialised. Under high thread contention this is the main bottleneck. Per-thread arenas (how jemalloc and tcmalloc work) would fix this.\
-\ls3\ilvl0
-\f0\b \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
-\outl0\strokewidth0 \strokec2 No mmap fallback for large allocations
-\f1\b0 : everything goes through sbrk. Real allocators use mmap for requests above ~128KB so those chunks can be returned to the OS on free.\
-\ls3\ilvl0
-\f0\b \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
-\outl0\strokewidth0 \strokec2 O(n) allocation for first-fit and best-fit
-\f1\b0 : both scan the full free list. Segregated free lists (one list per size class) would make typical allocations O(1).\
-\ls3\ilvl0
-\f0\b \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
-\outl0\strokewidth0 \strokec2 Fixed-size buddy pool
-\f1\b0 : the buddy system is backed by a static 64KB array. A real implementation would grow on demand.\
-\pard\pardeftab720\partightenfactor0
-\cf3 \strokec3 \
-\pard\pardeftab720\sa298\partightenfactor0
-
-\f0\b\fs36 \cf0 \strokec2 Resources that helped\
-\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
-\ls4\ilvl0
-\f3\i\b0\fs24 \cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
-\outl0\strokewidth0 \strokec2 The C Programming Language
-\f1\i0  by Kernighan and Ritchie, chapter 8 (storage allocator example)\
-\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
-\ls4\ilvl0\cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
-\outl0\strokewidth0 \strokec2 glibc malloc source: 
-\f2\fs26 malloc/malloc.c
-\f1\fs24  in the glibc repository\
-\ls4\ilvl0\kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
-\outl0\strokewidth0 \strokec2 jemalloc paper: 
-\f3\i A Scalable Concurrent malloc Implementation for FreeBSD
-\f1\i0  by Jason Evans\
-\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
-\ls4\ilvl0
-\f2\fs26 \cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
-\outl0\strokewidth0 \strokec2 man 2 sbrk
-\f1\fs24 , 
-\f2\fs26 man 2 mmap
-\f1\fs24 \
-\pard\pardeftab720\partightenfactor0
-\cf3 \strokec3 \
-\pard\pardeftab720\sa240\partightenfactor0
-\cf0 \strokec2 Built by {\field{\*\fldinst{HYPERLINK "https://github.com/Samir204"}}{\fldrslt \cf4 \ul \ulc4 \strokec4 Samir}} as part of a summer systems programming portfolio.\
-}
+Built by Samir as part of a summer systems programming portfolio.
