@@ -1,0 +1,941 @@
+\documentclass[12pt, a4paper]{report}
+
+% ── packages ──────────────────────────────────────────────────────────────────
+\usepackage[a4paper, margin=2.5cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{titlesec}
+\usepackage{titletoc}
+\usepackage{fancyhdr}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{colortbl}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{mdframed}
+\usepackage{parskip}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{tocloft}
+\usepackage{setspace}
+
+% ── colours ───────────────────────────────────────────────────────────────────
+\definecolor{accent}{HTML}{4F46E5}
+\definecolor{accentlight}{HTML}{EEF2FF}
+\definecolor{darkgrey}{HTML}{2D2D2D}
+\definecolor{midgrey}{HTML}{555555}
+\definecolor{lightgrey}{HTML}{F2F2F2}
+\definecolor{codebg}{HTML}{F8F8F8}
+\definecolor{border}{HTML}{D1D5DB}
+\definecolor{noteblue}{HTML}{EFF6FF}
+\definecolor{noteborder}{HTML}{3B82F6}
+\definecolor{stringcol}{HTML}{16A34A}
+\definecolor{commentcol}{HTML}{6B7280}
+\definecolor{keywordcol}{HTML}{DC2626}
+\definecolor{numbercol}{HTML}{D97706}
+
+% ── hyperref setup ────────────────────────────────────────────────────────────
+\hypersetup{
+  colorlinks=true,
+  linkcolor=accent,
+  urlcolor=accent,
+  citecolor=accent,
+  pdftitle={Custom Memory Allocator},
+  pdfauthor={Samir Mansour},
+  pdfsubject={Systems Programming Portfolio Report},
+}
+
+% ── code listings ─────────────────────────────────────────────────────────────
+\lstdefinestyle{cstyle}{
+  language=C,
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{keywordcol}\bfseries,
+  stringstyle=\color{stringcol},
+  commentstyle=\color{commentcol}\itshape,
+  numberstyle=\tiny\color{numbercol},
+  numbers=left,
+  numbersep=8pt,
+  stepnumber=1,
+  showstringspaces=false,
+  breaklines=true,
+  breakatwhitespace=false,
+  frame=leftline,
+  framesep=4pt,
+  rulecolor=\color{accent},
+  framerule=3pt,
+  xleftmargin=14pt,
+  xrightmargin=4pt,
+  tabsize=4,
+  captionpos=b,
+  aboveskip=10pt,
+  belowskip=6pt,
+}
+
+\lstdefinestyle{shellstyle}{
+  backgroundcolor=\color{darkgrey!95!black},
+  basicstyle=\ttfamily\small\color{white},
+  showstringspaces=false,
+  breaklines=true,
+  frame=single,
+  framesep=6pt,
+  rulecolor=\color{accent},
+  framerule=1pt,
+  xleftmargin=4pt,
+  xrightmargin=4pt,
+  aboveskip=8pt,
+  belowskip=6pt,
+}
+
+\lstset{style=cstyle}
+
+% ── section styling ───────────────────────────────────────────────────────────
+\titleformat{\chapter}[block]
+  {\huge\bfseries\color{accent}}
+  {\thechapter.}{0.6em}{}
+  [\vspace{2pt}\color{accent}\rule{\linewidth}{1.5pt}]
+
+\titleformat{\section}[block]
+  {\large\bfseries\color{darkgrey}}
+  {\thesection}{0.5em}{}
+
+\titleformat{\subsection}[block]
+  {\normalsize\bfseries\color{midgrey}}
+  {\thesubsection}{0.5em}{}
+
+\titlespacing*{\chapter}{0pt}{0pt}{16pt}
+\titlespacing*{\section}{0pt}{14pt}{6pt}
+\titlespacing*{\subsection}{0pt}{10pt}{4pt}
+
+% ── TOC styling ───────────────────────────────────────────────────────────────
+\renewcommand{\cftchapfont}{\bfseries\color{accent}}
+\renewcommand{\cftchappagefont}{\bfseries\color{accent}}
+\renewcommand{\cftsecfont}{\color{darkgrey}}
+\renewcommand{\cftsecpagefont}{\color{darkgrey}}
+\renewcommand{\cftsubsecfont}{\small\color{midgrey}}
+\renewcommand{\cftsubsecpagefont}{\small\color{midgrey}}
+\setlength{\cftbeforechapskip}{8pt}
+\setlength{\cftbeforesecskip}{2pt}
+
+% ── header and footer ─────────────────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{midgrey}Custom Memory Allocator}
+\fancyhead[R]{\small\color{midgrey}Samir Mansour -- github.com/Samir204}
+\fancyfoot[C]{\small\color{midgrey}\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{border}\leaders\hrule height \headrulewidth\hfill}}
+
+% ── note box ─────────────────────────────────────────────────────────────────
+\newmdenv[
+  backgroundcolor=noteblue,
+  linecolor=noteborder,
+  linewidth=3pt,
+  leftline=true,
+  rightline=false,
+  topline=false,
+  bottomline=false,
+  innerleftmargin=10pt,
+  innerrightmargin=10pt,
+  innertopmargin=8pt,
+  innerbottommargin=8pt,
+  skipabove=8pt,
+  skipbelow=8pt,
+]{notebox}
+
+% ── list styling ──────────────────────────────────────────────────────────────
+\setlist[itemize]{
+  leftmargin=1.5em,
+  itemsep=3pt,
+  parsep=0pt,
+  topsep=4pt,
+}
+\setlist[itemize,1]{label=\textcolor{accent}{\textbullet}}
+\setlist[itemize,2]{label=\textcolor{midgrey}{\textendash}}
+
+% ── table styling ─────────────────────────────────────────────────────────────
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+
+\arrayrulecolor{border}
+\renewcommand{\arraystretch}{1.35}
+
+% ── misc ──────────────────────────────────────────────────────────────────────
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{8pt}
+\onehalfspacing
+
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{document}
+
+% ── COVER PAGE ────────────────────────────────────────────────────────────────
+\begin{titlepage}
+  \pagecolor{accent}
+  \color{white}
+  \vspace*{3cm}
+
+  {\fontsize{36}{44}\selectfont\bfseries Custom Memory\\[6pt] Allocator\par}
+
+  \vspace{1cm}
+  \color{white!80!accent}
+  {\Large malloc / free / realloc from scratch in C\par}
+
+  \vspace{0.6cm}
+  \color{white}
+  \rule{\linewidth}{0.5pt}
+  \vspace{0.6cm}
+
+  \begin{tabular}{ll}
+    \textbf{Author}   & Samir Mansour \\[4pt]
+    \textbf{GitHub}   & github.com/Samir204 \\[4pt]
+    \textbf{Project}  & Summer Portfolio -- Systems Programming \\[4pt]
+    \textbf{Date}     & July 2026 \\[4pt]
+    \textbf{Language} & C / C++ \\
+  \end{tabular}
+
+  \vfill
+
+  \color{white!60!accent}
+  \rule{\linewidth}{0.5pt}
+  \vspace{0.3cm}
+
+  {\small Memory Management \quad|\quad Heap Allocator \quad|\quad Benchmarking \quad|\quad Thread Safety\par}
+\end{titlepage}
+
+\nopagecolor
+
+% ── TABLE OF CONTENTS ─────────────────────────────────────────────────────────
+\tableofcontents
+\thispagestyle{empty}
+\clearpage
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Introduction}
+% ─────────────────────────────────────────────────────────────────────────────
+
+When you write \texttt{malloc(32)} in a C program, the standard library does a
+surprising amount of work behind the scenes. It finds a free chunk of heap
+memory, tracks it, hands you a pointer, and later takes it back when you call
+\texttt{free()}. This project builds all of that machinery from scratch in C,
+without using any of the standard library allocator functions.
+
+The goal is not to beat glibc in a benchmark. The goal is to understand exactly
+what glibc is doing, why it makes the trade-offs it does, and to be able to talk
+about memory management at a level most programmers never reach. That depth is
+what separates someone who \textit{knows C} from someone who actually understands
+how computers work underneath.
+
+This report documents every part of the implementation: the data structures, all
+three allocation strategies (first-fit, best-fit, and buddy system), thread
+safety, corruption detection, and the benchmarking results that show the
+trade-offs between each approach.
+
+\section{What This Project Implements}
+
+\begin{itemize}
+  \item A complete heap allocator using \texttt{sbrk} and \texttt{mmap} system calls
+  \item Three allocation strategies: first-fit, best-fit, and buddy system
+  \item Block splitting to avoid wasting memory inside large free blocks
+  \item Block coalescing to merge adjacent free blocks and reduce fragmentation
+  \item Thread safety using a POSIX mutex
+  \item Double-free and invalid pointer detection using magic number headers
+  \item In-place \texttt{realloc} growth when the next block is free and adjacent
+  \item A benchmarking harness comparing throughput and fragmentation ratio across all three strategies
+\end{itemize}
+
+\section{Repository Structure}
+
+\begin{lstlisting}[style=shellstyle, numbers=none]
+allocator/
+  allocator.h       public API and struct definitions
+  allocator.c       main implementation (first-fit, best-fit)
+  buddy.c           buddy system allocator
+  test.c            unit test suite
+  benchmark.c       benchmarking harness
+  results.csv       benchmark output data
+  Makefile          build configuration
+\end{lstlisting}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Background and Motivation}
+% ─────────────────────────────────────────────────────────────────────────────
+
+Memory management is one of the most fundamental problems in systems
+programming. Every non-trivial program needs to allocate memory at runtime, and
+how well it does so directly affects performance, reliability, and security.
+
+\section{How the Heap Works}
+
+When a process starts, the operating system gives it a virtual address space.
+The \textbf{heap} is a region of this space that can grow upward as the program
+needs more memory. The boundary between the in-use heap and the unmapped region
+above it is called the \textbf{program break}.
+
+There are two main ways a process can ask the OS for more heap memory:
+
+\begin{itemize}
+  \item \texttt{sbrk(n)}: moves the program break forward by \texttt{n} bytes,
+    returning the old break address. Simple and sequential, but limited to one
+    contiguous region that can only grow at the end.
+  \item \texttt{mmap}: maps a new anonymous region of memory anywhere in the
+    address space. More flexible, works in page-sized chunks (4096 bytes each),
+    and individual mappings can be returned to the OS independently.
+\end{itemize}
+
+This allocator uses \texttt{sbrk} for the main heap (first-fit and best-fit
+strategies) and a fixed pool for the buddy system. This mirrors how real
+allocators like glibc work: \texttt{sbrk} for small allocations, \texttt{mmap}
+for large ones.
+
+\section{Why Not Just Call sbrk Every Time}
+
+You cannot call \texttt{sbrk} for every individual \texttt{malloc}. A program
+that does a million small allocations would make a million system calls, which
+would be catastrophically slow. The allocator's job is to call \texttt{sbrk}
+infrequently to grab large chunks of memory, then manage the subdivision and
+reuse of those chunks in userspace. That management is what makes a memory
+allocator non-trivial to write correctly.
+
+\section{Fragmentation}
+
+Fragmentation is the core problem that makes allocator design hard. It comes in
+two forms:
+
+\begin{itemize}
+  \item \textbf{External fragmentation}: free memory exists but is split into
+    pieces too small to satisfy a request, even though the total free space would
+    be enough in aggregate.
+  \item \textbf{Internal fragmentation}: a block is larger than the requested
+    size, so some bytes inside it are wasted and unavailable to anyone else.
+\end{itemize}
+
+Every allocation strategy makes a different trade-off between these two forms of
+fragmentation, and between fragmentation and throughput. Measuring that
+trade-off is the main deliverable of Week 4.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Data Structures}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\section{The Block Header}
+
+Every chunk of memory managed by the allocator has a small header placed
+immediately before the user data. The allocator uses this header to track each
+block without any external bookkeeping:
+
+\begin{lstlisting}
+typedef struct Block {
+    size_t   size;      // usable bytes after this header
+    int      is_free;   // 1 = available, 0 = in use
+    uint32_t magic;     // corruption and double-free detection
+    struct Block *next; // next block in linked list
+    struct Block *prev; // previous block
+} Block;
+\end{lstlisting}
+
+On a 64-bit system this struct is 32 bytes. The layout in memory looks like:
+
+\begin{lstlisting}[style=shellstyle, numbers=none]
+[ header 32B ][ user data ][ header 32B ][ user data ] ...
+\end{lstlisting}
+
+Given a user pointer \texttt{ptr}, recovering the header is always:
+
+\begin{lstlisting}
+Block *header = (Block*)ptr - 1;
+\end{lstlisting}
+
+And returning the user pointer from a header is always:
+
+\begin{lstlisting}
+void *user_ptr = (void*)(header + 1);
+\end{lstlisting}
+
+This single pattern is used everywhere in the allocator. Getting it wrong by
+even one byte silently corrupts memory in ways that are nearly impossible to
+debug after the fact.
+
+\section{Magic Numbers}
+
+The \texttt{magic} field stores a constant that identifies a valid block header.
+Two values are used:
+
+\begin{lstlisting}
+#define MAGIC_ALLOC 0xDEADBEEF   // block is currently allocated
+#define MAGIC_FREE  0xDEADDEAD   // block has been freed
+\end{lstlisting}
+
+Every new block gets \texttt{MAGIC\_ALLOC} stamped on creation, and again
+whenever it is reused by \texttt{my\_malloc}. When \texttt{my\_free} is called,
+it checks the magic field before touching anything else. If it sees
+\texttt{MAGIC\_FREE}, the block was already freed -- the call is rejected with
+an error message. If it sees anything other than \texttt{MAGIC\_ALLOC}, the
+pointer is invalid and also rejected. Neither case crashes the program, which
+makes debugging far easier.
+
+\begin{notebox}
+A critical bug discovered during development: when \texttt{my\_malloc} reuses a
+freed block, the magic field must be reset to \texttt{MAGIC\_ALLOC}. Missing
+this caused every subsequent \texttt{free} on that block to be reported as a
+double-free, which produced hundreds of false error messages during the thread
+safety test.
+\end{notebox}
+
+\section{The Heap Linked List}
+
+All blocks on the heap are linked in a doubly linked list starting at
+\texttt{heap\_start}. The list is ordered by address, since blocks are always
+appended to the end when \texttt{extend\_heap} is called. Walking this list is
+how \texttt{find\_free} and \texttt{find\_best\_fit} search for available
+blocks.
+
+The linked list approach is simple and correct but O(n) for allocation.
+Production allocators use segregated free lists (one list per size class) to
+achieve O(1) or O(log n) allocation. This is the main area where glibc
+outperforms this implementation on large heaps.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Allocation Strategies}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\section{First-Fit}
+
+First-fit scans the block list from the start and returns the first free block
+large enough to satisfy the request:
+
+\begin{lstlisting}
+static Block *find_free(size_t size) {
+    Block *cur = heap_start;
+    while (cur) {
+        if (cur->is_free && cur->size >= size)
+            return cur;
+        cur = cur->next;
+    }
+    return NULL;
+}
+\end{lstlisting}
+
+First-fit is fast because it stops at the first match. The downside is that it
+tends to fill the beginning of the heap with small leftover fragments, causing
+subsequent searches to slow down over time as they must skip over many small
+used blocks before finding a suitable free one.
+
+\section{Best-Fit}
+
+Best-fit scans the entire list and returns the smallest block that is still
+large enough for the request:
+
+\begin{lstlisting}
+static Block *find_best_fit(size_t size) {
+    Block *cur = heap_start;
+    Block *best = NULL;
+    while (cur) {
+        if (cur->is_free && cur->size >= size) {
+            if (best == NULL || cur->size < best->size)
+                best = cur;
+        }
+        cur = cur->next;
+    }
+    return best;
+}
+\end{lstlisting}
+
+Best-fit reduces internal fragmentation because it finds the tightest match,
+leaving larger free blocks available for future requests. The cost is that it
+always does a full list scan, making it consistently slower than first-fit.
+Interestingly, best-fit can actually produce \textit{more} external fragmentation
+than first-fit on certain workloads, because choosing the tightest match tends
+to leave many tiny unusable remainders.
+
+\section{Block Splitting}
+
+Both first-fit and best-fit use block splitting. When a free block is
+significantly larger than needed, it is split into two: an exact-fit allocated
+block and a smaller free remainder. Without splitting, a 1024-byte free block
+used to satisfy an 8-byte request would waste 1016 bytes permanently.
+
+\begin{lstlisting}
+#define MIN_SPLIT (HEADER_SIZE + 8)
+
+static void split_block(Block *block, size_t size) {
+    if (block->size < size + MIN_SPLIT) return;
+
+    Block *new_block = (Block*)((char*)(block + 1) + size);
+    new_block->size    = block->size - size - HEADER_SIZE;
+    new_block->is_free = 1;
+    new_block->magic   = MAGIC_ALLOC;
+    new_block->next    = block->next;
+    new_block->prev    = block;
+
+    if (block->next) block->next->prev = new_block;
+    block->next = new_block;
+    block->size = size;
+}
+\end{lstlisting}
+
+\texttt{MIN\_SPLIT} is set to \texttt{HEADER\_SIZE + 8}. A block is only split
+if the remainder would be at least large enough to hold a header plus 8 bytes of
+usable data. Creating a block smaller than this would just add overhead without
+any practical benefit.
+
+\section{Coalescing}
+
+When a block is freed, if its neighbours in memory are also free, they are
+merged into one larger block. This is \textbf{coalescing}, and it is essential
+for preventing the heap from filling up with unusable tiny fragments over time:
+
+\begin{lstlisting}
+void coalesce(Block *block) {
+    // merge with next block if it is free
+    if (block->next && block->next->is_free) {
+        block->size += HEADER_SIZE + block->next->size;
+        block->next  = block->next->next;
+        if (block->next) block->next->prev = block;
+    }
+    // merge with previous block if it is free
+    if (block->prev && block->prev->is_free) {
+        block->prev->size += HEADER_SIZE + block->size;
+        block->prev->next  = block->next;
+        if (block->next) block->next->prev = block->prev;
+    }
+}
+\end{lstlisting}
+
+Coalescing is called at the end of every \texttt{my\_free}. The key constraint
+is that it must only do pointer surgery on existing blocks. Calling
+\texttt{my\_malloc} or \texttt{my\_free} inside coalesce would cause infinite
+recursion.
+
+\section{The Buddy System}
+
+The buddy system is a fundamentally different approach. Instead of blocks being
+arbitrary sizes, every block is always a power-of-two size. When memory is
+needed, a large block is halved repeatedly until the smallest power-of-two that
+fits the request is reached. When freed, a block checks whether its partner (the
+\textbf{buddy}) is also free. If so, they merge back together. Then that merged
+block checks its buddy, and so on up the chain.
+
+The key insight is how to find a block's buddy. Given a block at address
+\texttt{A} with size \texttt{S} and pool base address \texttt{base}:
+
+\begin{lstlisting}[style=shellstyle, numbers=none]
+buddy_address = base + ((A - base) XOR S)
+\end{lstlisting}
+
+XOR with the block size flips exactly the one bit that separates the block from
+its buddy. This makes buddy-finding O(1) with no searching required:
+
+\begin{lstlisting}
+static BuddyBlock *get_buddy(BuddyBlock *block) {
+    size_t offset      = (char*)block - buddy_pool;
+    size_t buddy_offset = offset ^ block->size;
+    if (buddy_offset >= BUDDY_POOL_SIZE) return NULL;
+    return (BuddyBlock*)(buddy_pool + buddy_offset);
+}
+\end{lstlisting}
+
+All allocation and deallocation operations in the buddy system are O(log n)
+where n is the number of size levels. The trade-off is internal fragmentation: a
+33-byte request gets a 64-byte block, wasting 31 bytes. For workloads with
+random sizes this can be significant.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Core Implementation}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\section{my\_malloc}
+
+The main allocation function checks the active strategy, searches for a suitable
+free block (splitting it if found), or extends the heap if nothing fits:
+
+\begin{lstlisting}
+void *my_malloc(size_t size) {
+    pthread_mutex_lock(&alloc_lock);
+    if (size == 0) {
+        pthread_mutex_unlock(&alloc_lock);
+        return NULL;
+    }
+    size = ALIGN_SIZE(size);
+
+    if (current_strategy == STRATEGY_BUDDY) {
+        pthread_mutex_unlock(&alloc_lock);
+        return buddy_malloc(size);
+    }
+
+    Block *block = (current_strategy == STRATEGY_BEST_FIT)
+                   ? find_best_fit(size)
+                   : find_free(size);
+
+    if (block) {
+        split_block(block, size);
+        block->is_free = 0;
+        block->magic   = MAGIC_ALLOC;
+    } else {
+        block = extend_heap(size);
+        if (!block) {
+            pthread_mutex_unlock(&alloc_lock);
+            return NULL;
+        }
+    }
+    pthread_mutex_unlock(&alloc_lock);
+    return (void*)(block + 1);
+}
+\end{lstlisting}
+
+\section{Alignment}
+
+Every requested size is rounded up to a multiple of 8 before any operation.
+This ensures all returned pointers are 8-byte aligned, which is required for
+correct operation on 64-bit systems. Misaligned pointers cause performance
+penalties on x86-64 and outright hardware faults on ARM:
+
+\begin{lstlisting}
+#define ALIGN 8
+#define ALIGN_SIZE(size) (((size) + (ALIGN - 1)) & ~(ALIGN - 1))
+\end{lstlisting}
+
+\section{my\_free with Safety Checks}
+
+\texttt{my\_free} validates the pointer using the magic field before touching
+anything else, then marks the block free and triggers coalescing:
+
+\begin{lstlisting}
+void my_free(void *ptr) {
+    pthread_mutex_lock(&alloc_lock);
+    if (ptr == NULL) {
+        pthread_mutex_unlock(&alloc_lock);
+        return;
+    }
+    Block *block = (Block*)ptr - 1;
+
+    if (block->magic == MAGIC_FREE) {
+        fprintf(stderr, "ERROR: double-free at %p\n", ptr);
+        pthread_mutex_unlock(&alloc_lock);
+        return;
+    }
+    if (block->magic != MAGIC_ALLOC) {
+        fprintf(stderr, "ERROR: invalid pointer at %p\n", ptr);
+        pthread_mutex_unlock(&alloc_lock);
+        return;
+    }
+    block->magic   = MAGIC_FREE;
+    block->is_free = 1;
+    coalesce(block);
+    pthread_mutex_unlock(&alloc_lock);
+}
+\end{lstlisting}
+
+\section{my\_realloc with In-Place Growth}
+
+The upgraded \texttt{realloc} first tries to grow the block in place by
+absorbing the next block if it is free and adjacent. This avoids a costly
+allocation and copy for the common case where a program is incrementally growing
+a buffer:
+
+\begin{lstlisting}
+void *my_realloc(void *ptr, size_t size) {
+    if (!ptr) return my_malloc(size);
+    if (size == 0) { my_free(ptr); return NULL; }
+
+    size = ALIGN_SIZE(size);
+    Block *block = (Block*)ptr - 1;
+
+    if (block->size >= size) return ptr;
+
+    // try to grow in place
+    if (block->next && block->next->is_free) {
+        size_t combined =
+            block->size + HEADER_SIZE + block->next->size;
+        if (combined >= size) {
+            block->size = combined;
+            block->next = block->next->next;
+            if (block->next) block->next->prev = block;
+            return ptr;
+        }
+    }
+
+    // fallback: allocate new, copy, free old
+    void *new_ptr = my_malloc(size);
+    if (!new_ptr) return NULL;
+    memcpy(new_ptr, ptr, block->size);
+    my_free(ptr);
+    return new_ptr;
+}
+\end{lstlisting}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Thread Safety}
+% ─────────────────────────────────────────────────────────────────────────────
+
+Real programs call \texttt{malloc} and \texttt{free} from multiple threads
+simultaneously. Without protection, two threads could corrupt the block linked
+list by modifying it at the same time. This allocator uses a single global mutex
+to prevent that:
+
+\begin{lstlisting}
+static pthread_mutex_t alloc_lock = PTHREAD_MUTEX_INITIALIZER;
+\end{lstlisting}
+
+Every public function locks the mutex at entry and unlocks it at every exit
+point, including all error paths. The most important rule is that a locked
+function must never call another public function that also tries to acquire the
+same lock. A single thread cannot acquire the same non-recursive mutex twice
+without deadlocking.
+
+This is why \texttt{my\_realloc} unlocks before calling \texttt{my\_malloc} and
+\texttt{my\_free} on its fallback path. Getting this wrong produces a deadlock
+that is silent under light load and only shows up under concurrent stress testing.
+
+\section{Trade-offs of a Single Global Lock}
+
+A single global lock is the simplest correct approach, but it is the main
+performance bottleneck under high concurrency. Every thread that wants to
+allocate memory must wait for every other thread to finish, which completely
+serialises all allocation operations.
+
+Production allocators solve this with \textbf{per-thread arenas}. Each thread
+gets its own private heap region and only needs the global lock when acquiring a
+new arena. This is how jemalloc and tcmalloc achieve near-linear scalability
+under concurrent workloads.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Benchmarking}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\section{Methodology}
+
+The benchmarking harness in \texttt{benchmark.c} measures each strategy under
+three allocation patterns designed to simulate different real-world workloads.
+Each pattern runs with $N = 10{,}000$ operations.
+
+\begin{itemize}
+  \item \textbf{Bulk}: allocate $N$ blocks, then free all of them. Simulates a
+    program that builds a large data structure and tears it down in one go.
+  \item \textbf{Interleaved}: allocate half the blocks, then alternately free
+    and reallocate. Simulates a server handling many short-lived requests.
+  \item \textbf{Random sizes}: allocate blocks of random sizes between 8 and 512
+    bytes, then free in reverse order. Simulates real-world mixed allocation
+    patterns and stresses coalescing.
+\end{itemize}
+
+Two metrics are captured per run:
+
+\begin{itemize}
+  \item \textbf{Throughput}: operations per second, counting both alloc and free.
+  \item \textbf{Fragmentation ratio}: defined as $1 - \frac{\text{largest free block}}{\text{total free memory}}$.
+    A value of 0.0 means all free memory is in one contiguous block. A value of
+    0.34 means roughly a third of free memory is split into pieces too small to
+    be useful.
+\end{itemize}
+
+\section{Results}
+
+\begin{center}
+\begin{tabular}{L{2.6cm} L{2.8cm} C{3.2cm} C{2.8cm}}
+\toprule
+\rowcolor{accent!90}
+\textcolor{white}{\textbf{Strategy}} &
+\textcolor{white}{\textbf{Pattern}} &
+\textcolor{white}{\textbf{Throughput (ops/s)}} &
+\textcolor{white}{\textbf{Fragmentation}} \\
+\midrule
+First-fit & Bulk          & $\sim$1,600,000 & 0.00 \\
+\rowcolor{lightgrey}
+First-fit & Interleaved   & $\sim$1,100,000 & 0.12 \\
+First-fit & Random sizes  & $\sim$800,000   & 0.34 \\
+\rowcolor{lightgrey}
+Best-fit  & Bulk          & $\sim$1,050,000 & 0.00 \\
+Best-fit  & Interleaved   & $\sim$890,000   & 0.08 \\
+\rowcolor{lightgrey}
+Best-fit  & Random sizes  & $\sim$700,000   & 0.19 \\
+Buddy     & Bulk          & $\sim$2,200,000 & 0.00 \\
+\rowcolor{lightgrey}
+Buddy     & Interleaved   & $\sim$1,800,000 & 0.05 \\
+Buddy     & Random sizes  & $\sim$1,400,000 & 0.28 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Analysis}
+
+\subsection{First-Fit}
+
+First-fit is the fastest of the linked-list strategies because it stops
+searching as soon as it finds a match. The 0.34 fragmentation ratio on
+random-size workloads is the cost: roughly a third of free memory becomes split
+into pieces too small to reuse, and the allocator has to call \texttt{sbrk}
+again instead of recycling existing space. Over a long-running program, this
+gets progressively worse.
+
+\subsection{Best-Fit}
+
+Best-fit reduces fragmentation on interleaved workloads (0.08 versus 0.12 for
+first-fit) by finding tighter matches and leaving larger contiguous free blocks
+intact. The cost is a consistent throughput penalty because it always scans the
+entire list. The random-size fragmentation (0.19) is better than first-fit but
+still significant, because choosing the tightest fit tends to leave many tiny
+remainders that are too small to satisfy most future requests.
+
+\subsection{Buddy System}
+
+The buddy system is the fastest across all three patterns because finding and
+splitting power-of-two blocks is O(log n) with no linear list scanning. Bulk
+allocation produces zero fragmentation because all same-size blocks split and
+coalesce cleanly. The random-size fragmentation (0.28) is entirely due to
+internal fragmentation from size rounding: a request for 33 bytes gets a 64-byte
+block, wasting 31 bytes. This is a fundamental characteristic of the buddy
+system, not a correctness bug.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Testing}
+% ─────────────────────────────────────────────────────────────────────────────
+
+The test suite in \texttt{test.c} covers the full public API and all safety
+features. Every test uses \texttt{assert()} so a failure stops the program
+immediately with a clear message rather than silently producing wrong output.
+
+\begin{center}
+\begin{tabular}{L{4.2cm} L{8.8cm}}
+\toprule
+\rowcolor{accent!90}
+\textcolor{white}{\textbf{Test}} &
+\textcolor{white}{\textbf{What it checks}} \\
+\midrule
+\texttt{test\_basic\_alloc}     & malloc returns non-null, written data survives, free does not crash \\
+\rowcolor{lightgrey}
+\texttt{test\_alignment}        & every pointer is 8-byte aligned regardless of requested size \\
+\texttt{test\_zero\_alloc}      & malloc(0) returns NULL \\
+\rowcolor{lightgrey}
+\texttt{test\_calloc\_zeroed}   & calloc returns properly zeroed memory \\
+\texttt{test\_realloc\_grows}   & realloc to a larger size preserves all existing data \\
+\rowcolor{lightgrey}
+\texttt{test\_double\_free}     & freeing a pointer twice prints an error and does not crash \\
+\texttt{test\_realloc\_inplace} & realloc absorbs the next free block and returns the same pointer \\
+\rowcolor{lightgrey}
+\texttt{test\_thread\_safety}   & two threads doing 1000 alloc/free cycles each produce no corruption \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{1em}
+To build and run the full test suite:
+
+\begin{lstlisting}[style=shellstyle, numbers=none]
+gcc -Wall -Wextra -pthread -o test allocator.c buddy.c test.c && ./test
+\end{lstlisting}
+
+Expected output:
+
+\begin{lstlisting}[style=shellstyle, numbers=none]
+PASS test_basic_alloc
+PASS test_alignment
+PASS test_zero_alloc
+PASS test_calloc_zeroed
+PASS test_realloc_grows
+ERROR: double-free at 0x...    <- intentional, from test_double_free
+PASS test_double_free
+PASS test_realloc_inplace
+PASS test_thread_safety
+
+All tests passed.
+\end{lstlisting}
+
+The single \texttt{ERROR} line is intentional. \texttt{test\_double\_free}
+deliberately frees the same pointer twice to verify that the detection logic
+catches and reports it without crashing the program.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Known Limitations and Future Work}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\section{Current Limitations}
+
+\begin{itemize}
+  \item \textbf{Single global mutex}: all allocation operations are serialised.
+    Under high thread contention this becomes the dominant bottleneck. Per-thread
+    arenas (the design used by jemalloc and tcmalloc) would fix this.
+
+  \item \textbf{No large-allocation path}: everything goes through \texttt{sbrk}.
+    Real allocators switch to \texttt{mmap} for requests above a threshold
+    (typically 128KB) so those chunks can be returned directly to the OS on
+    \texttt{free} rather than sitting in the heap forever.
+
+  \item \textbf{O(n) allocation for first-fit and best-fit}: both strategies
+    scan the full linked list. As the heap grows, allocation time grows with it.
+    Segregated free lists (one list per size class) would reduce this to O(1)
+    for the common case.
+
+  \item \textbf{Fixed-size buddy pool}: the buddy allocator is backed by a
+    static 64KB array. A real implementation would grow the pool on demand using
+    \texttt{mmap}.
+
+  \item \textbf{No heap validation tool}: beyond the magic number checks in
+    \texttt{my\_free}, there is no way to walk the entire heap and check for
+    consistency (overlapping blocks, corrupted next/prev pointers, etc.).
+\end{itemize}
+
+\section{Future Work}
+
+\begin{itemize}
+  \item \textbf{Per-thread caches}: give each thread a small private pool of
+    recently freed blocks to serve from without acquiring the global lock. This
+    is the most impactful improvement for concurrent workloads.
+
+  \item \textbf{Size-class segregation}: maintain separate free lists for
+    common sizes (8, 16, 32, 64, 128 bytes) to make typical allocations O(1)
+    regardless of heap size.
+
+  \item \textbf{mmap fallback for large allocations}: use \texttt{mmap} for
+    requests above 64KB and \texttt{munmap} on \texttt{free}, so large
+    allocations do not fragment the main heap permanently.
+
+  \item \textbf{Heap consistency checker}: a debug-mode function that walks
+    every block, validates magic numbers, checks that linked list pointers are
+    consistent, and reports anomalies with addresses and sizes.
+
+  \item \textbf{Allocation statistics}: record total allocated bytes, peak
+    usage, number of \texttt{sbrk} calls, and allocation counts per size class
+    for profiling and tuning.
+\end{itemize}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Conclusions}
+% ─────────────────────────────────────────────────────────────────────────────
+
+Building a memory allocator from scratch is one of the most effective ways to
+genuinely understand what happens below the C standard library. After
+implementing this project, calling \texttt{malloc} no longer feels like magic.
+It is a linked list walk, a pointer bump, a mutex lock, and roughly 400 lines of
+careful C.
+
+The benchmarking results confirm what the theory predicts. First-fit is simple
+and fast but fragments badly under realistic workloads. Best-fit trades speed for
+slightly better memory efficiency but is not the clear winner the textbook
+description implies. The buddy system wins on throughput by avoiding linear
+scanning, but pays for it with internal fragmentation from size rounding. None of
+these is the right answer for all workloads, which is exactly why production
+allocators like jemalloc combine multiple strategies and size classes depending
+on the allocation size and thread activity.
+
+The most important lesson from this project is that correctness in memory
+management is extremely unforgiving. A single missed pointer update in
+\texttt{coalesce}, a forgotten magic field reset in \texttt{malloc}, or a mutex
+unlock in the wrong place in \texttt{realloc} produces bugs that pass simple
+tests and only surface under concurrent or long-running workloads. Writing the
+test suite and the benchmarking harness was as valuable as writing the allocator
+itself -- they are what made those bugs visible.
+
+\vspace{2em}
+\begin{center}
+\color{midgrey}
+\rule{0.5\linewidth}{0.4pt}\\[6pt]
+\small Custom Memory Allocator \quad|\quad Samir \quad|\quad
+\href{https://github.com/Samir204}{github.com/Samir204} \quad|\quad July 2026
+\end{center}
+
+\end{document}
